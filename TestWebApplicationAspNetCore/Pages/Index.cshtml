@@ -1,0 +1,50 @@
+﻿@page
+@model TestWebApplicationAspNetCore.Pages.IndexModel
+@{
+    ViewData["Title"] = "Главная страница";
+
+    var containerSizeInPixels = (1000, 800);
+}
+
+<h1>Рабочая область точек</h1>
+
+<div id="container" style="width: @($"{containerSizeInPixels.Item1}px"); height: @($"{containerSizeInPixels.Item2}px"); border: 1px solid black;"></div>
+<div id="objectsList"></div>
+
+<script src="~/js/points.js"></script>
+<script src="~/js/comments.js"></script>
+<script src="https://unpkg.com/konva@8.3.2/konva.min.js"></script>
+
+<script>
+    var objectsList = document.getElementById('objectsList');
+    const stage = new Konva.Stage({
+        container: 'container',
+        width: @(containerSizeInPixels.Item1),
+        height: @(containerSizeInPixels.Item2),
+    });
+
+    // 2. Создаём основной слой
+    const layer = new Konva.Layer();
+    stage.add(layer);
+
+    layer.draw();
+
+    // Обработчик клика на сцене
+    stage.on('click tap', async (e) => {
+      // Проверяем, что кликнули не по существующему объекту
+        if (e.target === stage) {
+            // Получаем координаты клика относительно сцены
+            const pos = stage.getPointerPosition();
+
+            // Создаём точку
+            const point = await Point.create(1, pos.x, pos.y, 10, 'black', null);
+            point.draw(layer);
+
+            updateObjectsList();
+        }
+    });
+
+    function updateObjectsList() {
+        objectsList.innerText = '@(string.Join("\r\n", Model.UpdateObjectsList()))';
+    }
+</script>
