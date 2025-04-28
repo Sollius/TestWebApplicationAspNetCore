@@ -25,7 +25,14 @@ namespace TestWebApplicationAspNetCore.Controllers
             comment.PointId = pointId;
             _context.Comments.Add(comment);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(AddComment), new { id = comment.Id }, comment);
+
+            return Ok(new
+            {
+                comment.Id,
+                comment.PointId,
+                comment.Text,
+                comment.BackgroundColor
+            });
         }
 
         [HttpPut("{id}")]

@@ -1,8 +1,8 @@
 ﻿@page
+@using System.Globalization
 @model TestWebApplicationAspNetCore.Pages.IndexModel
 @{
     ViewData["Title"] = "Главная страница";
-
     var containerSizeInPixels = (1000, 800);
 }
 
@@ -10,6 +10,45 @@
 
 <div id="container" style="width: @($"{containerSizeInPixels.Item1}px"); height: @($"{containerSizeInPixels.Item2}px"); border: 1px solid black;"></div>
 <div id="objectsList"></div>
+
+<!-- Модальное окно для создания точки -->
+<div id="createPointModal" style="display:none; position:fixed; top:30%; left:40%; background:white; padding:20px; border:1px solid black; z-index:1000;">
+    <h3>Добавить точку</h3>
+    <label>Цвет:</label>
+    <input type="color" id="pointColor" value="#000000"><br><br>
+
+    <label>Радиус:</label>
+    <input type="number" id="pointRadius" min="1" max="100" value="10"><br><br>
+
+    <button id="createPointBtn">Создать</button>
+    <button id="cancelPointBtn">Отмена</button>
+</div>
+
+<!-- Модальное окно для изменения точки -->
+<div id="editPointModal" style="display:none; position:fixed; top:30%; left:40%; background:white; padding:20px; border:1px solid black; z-index:1000;">
+    <h3>Изменить точку</h3>
+    <label>Цвет:</label>
+    <input type="color" id="editPointColor"><br><br>
+
+    <label>Радиус:</label>
+    <input type="number" id="editPointRadius" min="1" max="100"><br><br>
+
+    <button id="savePointBtn">Сохранить</button>
+    <button id="cancelEditPointBtn">Отмена</button>
+    <button id="addCommentBtn">Добавить комментарий</button>
+</div>
+
+<!-- Модальное окно для добавления комментария -->
+<div id="addCommentModal" style="display:none; position:fixed; top:30%; left:40%; background:white; padding:20px; border:1px solid black; z-index:1000;">
+    <h3>Добавить комментарий</h3>
+    <label>Комментарий:</label>
+    <input type="text" id="commentText"><br><br>
+    <label>Цвет:</label>
+    <input type="color" id="commentBackgroundColor"><br><br>
+
+    <button id="saveCommentBtn">Сохранить комментарий</button>
+    <button id="cancelAddCommentBtn">Отмена</button>
+</div>
 
 <script src="~/js/points.js"></script>
 <script src="~/js/comments.js"></script>
@@ -23,28 +62,175 @@
         height: @(containerSizeInPixels.Item2),
     });
 
-    // 2. Создаём основной слой
     const layer = new Konva.Layer();
     stage.add(layer);
-
     layer.draw();
 
-    // Обработчик клика на сцене
-    stage.on('click tap', async (e) => {
-      // Проверяем, что кликнули не по существующему объекту
-        if (e.target === stage) {
-            // Получаем координаты клика относительно сцены
-            const pos = stage.getPointerPosition();
+    var points = [];
 
-            // Создаём точку
-            const point = await Point.create(1, pos.x, pos.y, 10, 'black', null);
+    var pointsData = [@(string.Join(", ", Model.Points.Select(p => $"{{ id: {p.Id}, x: {p.X.ToString(CultureInfo.InvariantCulture)}, y: {p.Y.ToString(CultureInfo.InvariantCulture)}, radius: {p.Radius}, color: `{p.Color}` }}")))];
+    var commentsData = [@(string.Join(", ", Model.Comments.Select(c => $"{{ pointCommentsCount: {c.Point!.Comments.Count()}, commentText: `{c.Text}`, backgroundColor: `{c.BackgroundColor}`, pointId: {c.PointId}, pointX: {c.Point.X.ToString(CultureInfo.InvariantCulture)}, pointY: {c.Point.Y.ToString(CultureInfo.InvariantCulture)}, pointRadius: {c.Point.Radius}}}")))];
+
+    if (pointsData.length > 0) {
+        pointsData.forEach(p => {
+            var point = new Point(points, p.id, p.x, p.y, p.radius, p.color);
             point.draw(layer);
+            points.push(point);
+        })
 
-            updateObjectsList();
+        var commentsCount = 1;
+        var pointId = 0;
+        commentsData.forEach(c => {
+            if (pointId != 0 && pointId == c.pointId) {
+                commentsCount++;
+            } else {
+                pointId = c.pointId;
+                commentsCount = 1;
+            }
+
+            addCommentToCanvas(commentsCount, c.commentText, c.backgroundColor, c.pointId, c.pointX, c.pointY, c.pointRadius);
+            var commentPoint = points.find(p => p.id == c.pointId);
+            commentPoint.comments.push({ commentText: c.commentText, backgroundColor: c.backgroundColor });
+        })
+    }
+
+    let pendingPosition = null;
+    let selectedPoint = null;
+
+    stage.on('click tap', async (e) => {
+        if (e.target === stage) {
+            pendingPosition = stage.getPointerPosition();
+            openCreatePointModal();
         }
     });
 
-    function updateObjectsList() {
-        objectsList.innerText = '@(string.Join("\r\n", Model.UpdateObjectsList()))';
+    document.getElementById('createPointBtn').addEventListener('click', async () => {
+        const color = document.getElementById('pointColor').value;
+        const radius = parseInt(document.getElementById('pointRadius').value);
+
+        if (!pendingPosition) {
+            alert('Ошибка: нет позиции.');
+            return;
+        }
+
+        const point = await Point.create(points, pendingPosition.x, pendingPosition.y, radius, color);
+        point.draw(layer);
+        closeCreatePointModal();
+    });
+
+    document.getElementById('savePointBtn').addEventListener('click', async () => {
+        const color = document.getElementById('editPointColor').value;
+        const radius = parseInt(document.getElementById('editPointRadius').value);
+
+        if (selectedPoint) {
+            selectedPoint.color = color;
+            selectedPoint.radius = radius;
+
+            await selectedPoint.update();
+
+            selectedPoint.shape.fill(color);
+            selectedPoint.shape.radius(radius);
+            layer.draw();
+        }
+
+        closeEditPointModal();
+    });
+
+    document.getElementById('addCommentBtn').addEventListener('click', () => {
+        closeEditPointModal();
+        openAddCommentModal();
+    });
+
+    document.getElementById('saveCommentBtn').addEventListener('click', async () => {
+        const commentText = document.getElementById('commentText').value;
+
+        if (commentText.trim() === '') {
+            alert('Комментарий не может быть пустым');
+            return;
+        }
+
+        var result = await selectedPoint.addComment(commentText, commentBackgroundColor.value);
+
+        if (result > -1) {
+            addCommentToCanvas(selectedPoint.comments.length, commentText, commentBackgroundColor.value, selectedPoint.id, selectedPoint.x, selectedPoint.y, selectedPoint.radius);
+        }
+
+        closeAddCommentModal();
+    });
+
+    document.getElementById('cancelAddCommentBtn').addEventListener('click', closeAddCommentModal);
+
+    document.getElementById('cancelEditPointBtn').addEventListener('click', closeEditPointModal);
+        
+    document.getElementById('cancelPointBtn').addEventListener('click', closeCreatePointModal);
+
+    function openCreatePointModal() {
+        document.getElementById('createPointModal').style.display = 'block';
+
+        // Прячем кнопку комментария (она не нужна при создании)
+        document.getElementById('addCommentBtn').style.display = 'none';
+    }
+
+    function closeCreatePointModal() {
+        document.getElementById('createPointModal').style.display = 'none';
+    }
+
+    function openEditPointModal(point) {
+        selectedPoint = point;
+        document.getElementById('editPointColor').value = point.color;
+        document.getElementById('editPointRadius').value = point.radius;
+
+        document.getElementById('addCommentBtn').style.display = 'inline-block';
+        document.getElementById('editPointModal').style.display = 'block';
+    }
+
+    function openAddCommentModal() {
+        document.getElementById('addCommentModal').style.display = 'block';
+    }
+
+    function closeAddCommentModal() {
+        document.getElementById('addCommentModal').style.display = 'none';
+    }
+
+    function closeEditPointModal() {
+        document.getElementById('editPointModal').style.display = 'none';
+    }
+
+    function addCommentToCanvas(pointCommentsCount, commentText, backgroundColor, pointId, pointX, pointY, pointRadius) {
+        const text = new Konva.Text({
+            text: commentText,
+            fontSize: 14,
+            fontFamily: 'Calibri',
+            fill: 'black',
+            padding: 5,
+            backgroundColor: backgroundColor,
+            pointId: pointId,
+            type: "text",
+        });
+
+        const textWidth = text.width();
+        const centerX = pointX - textWidth / 2;
+
+        const textY = pointY + pointRadius + 10 + ((pointCommentsCount - 1) * (text.height() + 12));
+
+        text.setAttrs({
+            x: centerX,
+            y: textY,
+        });
+
+        const commentBox = new Konva.Rect({
+            x: text.x() - 5,
+            y: text.y() - 5,
+            width: text.width() + 10,
+            height: text.height() + 10,
+            fill: backgroundColor,
+            opacity: 0.5,
+            pointId: pointId,
+            type: "rect",
+        });
+
+        layer.add(commentBox);
+        layer.add(text);
+        layer.batchDraw();
     }
 </script>

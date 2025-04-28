@@ -1,11 +1,17 @@
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using TestWebApplicationAspNetCore.Data;
+using TestWebApplicationAspNetCore.Models;
 
 namespace TestWebApplicationAspNetCore.Pages
 {
     public class IndexModel : PageModel
     {
         private readonly AppDbContext dbContext;
+
+        public List<Point> Points { get; set; } = new();
+
+        public List<Comment> Comments { get; set; } = new();
 
         public IndexModel(AppDbContext dbContext)
         {
@@ -14,7 +20,8 @@ namespace TestWebApplicationAspNetCore.Pages
 
         public void OnGet()
         {
-            // Пока логики нет. Можно потом использовать для передачи данных в Razor.
+            this.Points = this.dbContext.Points.ToList();
+            this.Comments = this.dbContext.Comments.Include(c => c.Point).ThenInclude(p => p.Comments).ToList();
         }
 
         public List<string> UpdateObjectsList()

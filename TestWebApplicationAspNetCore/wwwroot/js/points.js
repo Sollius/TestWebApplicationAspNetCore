@@ -1,7 +1,5 @@
-﻿// points.js
-
-class Point {
-    constructor(id, x, y, radius, color, comments = []) {
+﻿class Point {
+    constructor(allLayerPoints, id, x, y, radius, color, comments = []) {
         this.id = id;
         this.x = x;
         this.y = y;
@@ -11,7 +9,7 @@ class Point {
         this.shape = null;
     }
 
-    static async create(x, y, radius, color) {
+    static async create(allLayerPoints, x, y, radius, color) {
         const response = await fetch(`/api/v1/points`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -31,7 +29,7 @@ class Point {
         }
 
         const createdPoint = await response.json();
-        return new Point(createdPoint.id, createdPoint.x, createdPoint.y, createdPoint.radius, createdPoint.color, createdPoint.comments);
+        return new Point(allLayerPoints, createdPoint.id, createdPoint.x, createdPoint.y, createdPoint.radius, createdPoint.color, createdPoint.comments);
     }
 
     draw(layer) {
@@ -44,7 +42,7 @@ class Point {
         });
 
         this.shape.on('dblclick', async () => {
-            await this.delete();
+            await this.delete(layer);
         });
 
         this.shape.on('dragend', async () => {
@@ -53,17 +51,33 @@ class Point {
             await this.update();
         });
 
+        this.shape.on('click tap', () => {
+            openEditPointModal(this); // <<< Показываем модалку при клике
+        });
+
         layer.add(this.shape);
     }
 
-    async delete() {
+    async delete(layer) {
         if (!confirm('Удалить эту точку?')) return;
 
         const response = await fetch(`/api/v1/points/${this.id}`, {
             method: 'DELETE'
         });
 
+        var thisPoint = this;
         if (response.ok) {
+            var arrayToDestroy = [];
+            layer.children.forEach(c => {
+                if (c.attrs.pointId == thisPoint.id) {
+                    arrayToDestroy.push(c);
+                }
+            })
+
+            while (arrayToDestroy[0]) {
+                arrayToDestroy[0].destroy();
+                arrayToDestroy.splice(0, 1);
+            }
             this.shape.destroy();
         } else {
             alert('Ошибка удаления');
@@ -92,4 +106,34 @@ class Point {
             alert('Ошибка обновления');
         }
     }
+
+    async addComment(commentText, backgroundColor) {
+        const commentData = {
+            text: commentText,
+            backgroundColor: backgroundColor
+        };
+
+        const requestOptions = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(commentData)
+        };
+
+        const apiUrl = `/api/v1/comments/${this.id}`;
+
+        const response = await fetch(apiUrl, requestOptions);
+
+        if (response.ok) {
+            const newComment = await response.json();
+            this.comments.push(newComment);
+            return newComment.id;
+        } else {
+            alert('Ошибка добавления комментария');
+            return -1;
+        }
+    }
+
+
 }
