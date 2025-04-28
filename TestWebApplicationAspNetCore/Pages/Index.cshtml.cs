@@ -5,28 +5,31 @@ using TestWebApplicationAspNetCore.Models;
 
 namespace TestWebApplicationAspNetCore.Pages
 {
-    public class IndexModel : PageModel
+    /// <summary>
+    /// Index page model class.
+    /// </summary>
+    /// <param name="dbContext">Application database context.</param>
+    public class IndexModel(AppDbContext dbContext) : PageModel
     {
-        private readonly AppDbContext dbContext;
+        private readonly AppDbContext dbContext = dbContext;
 
-        public List<Point> Points { get; set; } = new();
+        /// <summary>
+        /// Gets or sets collection of points.
+        /// </summary>
+        public List<Point> Points { get; set; } = [];
 
-        public List<Comment> Comments { get; set; } = new();
+        /// <summary>
+        /// Gets or sets collection of comments.
+        /// </summary>
+        public List<Comment> Comments { get; set; } = [];
 
-        public IndexModel(AppDbContext dbContext)
-        {
-            this.dbContext = dbContext;
-        }
-
+        /// <summary>
+        /// Automatically executed as a result of a GET request.
+        /// </summary>
         public void OnGet()
         {
             this.Points = this.dbContext.Points.ToList();
             this.Comments = this.dbContext.Comments.Include(c => c.Point).ThenInclude(p => p.Comments).ToList();
-        }
-
-        public List<string> UpdateObjectsList()
-        {
-            return this.dbContext.Points.Select(p => $"{p.Id}").ToList();
         }
     }
 }

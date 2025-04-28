@@ -50,8 +50,7 @@
     <button id="cancelAddCommentBtn">Отмена</button>
 </div>
 
-<script src="~/js/points.js"></script>
-<script src="~/js/comments.js"></script>
+<script src="~/js/app.js"></script>
 <script src="https://unpkg.com/konva@8.3.2/konva.min.js"></script>
 
 <script>
@@ -166,8 +165,6 @@
 
     function openCreatePointModal() {
         document.getElementById('createPointModal').style.display = 'block';
-
-        // Прячем кнопку комментария (она не нужна при создании)
         document.getElementById('addCommentBtn').style.display = 'none';
     }
 

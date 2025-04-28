@@ -4,11 +4,20 @@ using Point = TestWebApplicationAspNetCore.Models.Point;
 
 namespace TestWebApplicationAspNetCore.Data
 {
-    public class AppDbContext : DbContext
+    /// <summary>
+    /// Application database context class.
+    /// </summary>
+    /// <param name="options"></param>
+    public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
-
+        /// <summary>
+        /// Gets or sets EF collection of points.
+        /// </summary>
         public DbSet<Point> Points { get; set; }
+
+        /// <summary>
+        /// Gets or sets EF collection of comments.
+        /// </summary>
         public DbSet<Comment> Comments { get; set; }
     }
 }

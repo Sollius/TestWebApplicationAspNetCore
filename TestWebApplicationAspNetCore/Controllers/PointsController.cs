@@ -5,23 +5,30 @@ using TestWebApplicationAspNetCore.Models;
 
 namespace TestWebApplicationAspNetCore.Controllers
 {
+    /// <summary>
+    /// Points controller class.
+    /// </summary>
     [ApiController]
     [Route("api/v1/[controller]")]
-    public class PointsController : ControllerBase
+    public class PointsController(AppDbContext context) : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly AppDbContext _context = context;
 
-        public PointsController(AppDbContext context)
-        {
-            _context = context;
-        }
-
+        /// <summary>
+        /// Gets existing points.
+        /// </summary>
+        /// <returns>Action result.</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Point>>> GetPoints()
         {
             return await _context.Points.Include(p => p.Comments).ToListAsync();
         }
 
+        /// <summary>
+        /// Creates new point.
+        /// </summary>
+        /// <param name="point">New point data.</param>
+        /// <returns>Action result.</returns>
         [HttpPost]
         public async Task<ActionResult<Point>> CreatePoint(Point point)
         {
@@ -30,6 +37,12 @@ namespace TestWebApplicationAspNetCore.Controllers
             return CreatedAtAction(nameof(GetPoints), new { id = point.Id }, point);
         }
 
+        /// <summary>
+        /// Updates existing point.
+        /// </summary>
+        /// <param name="id">Id of updating point.</param>
+        /// <param name="updatedPoint">New data of updating point.</param>
+        /// <returns></returns>
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdatePoint(int id, Point updatedPoint)
         {
@@ -48,6 +61,11 @@ namespace TestWebApplicationAspNetCore.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// Deletes point.
+        /// </summary>
+        /// <param name="id">Id of deleting point.</param>
+        /// <returns>Action result.</returns>
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeletePoint(int id)
         {
